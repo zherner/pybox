@@ -39,6 +39,7 @@ class PYBOX:
     def __init__(self, args_in: argparse.Namespace) -> None:
         self._project_name = args_in.name
         self._project_path = args_in.path
+        self._project_path_full = self._project_path + "/" + self._project_name
         self._lambda = args_in.awslambda
 
         self._validate_inputs()
@@ -51,11 +52,26 @@ class PYBOX:
                     f"The input args '{check_space}' cannot contain spaces."
                 )
 
+    def make_project(self):
+        """Create the directory and the files for the project"""
+
+        if os.path.exists(self._project_path_full):
+            raise ValueError(
+                f"The directory '{self._project_path_full}' already exists."
+            )
+        os.mkdir(self._project_path_full)
+
+        self._mainfile_content()
+        self._requirmentsfile()
+        self._dockerfile()
+        # self._dockercompose()
+        self._makefile()
+
     def _mainfile_content(self):
         """Add content to the main project .py file"""
 
         # add content to main project file
-        f = open(self._project_path + "/" + self._project_name + ".py", "a")
+        f = open(self._project_path_full + "/" + self._project_name + ".py", "a")
         if self._lambda:
             f.write(
                 f'\ndef lambda_handler(event, context) -> None:\n  """Lambda entry method"""\n  # Lambda entry handler:\'{self._project_name}.lambda_handler\'\n  print("{self._project_name}")\n\n'
@@ -67,25 +83,46 @@ class PYBOX:
             f.write(f'\nif __name__ == "__main__": \n  print("{self._project_name}")\n')
         f.close()
 
+    def _requirmentsfile(self):
+        """Create the project requirements.txt file"""
+
+        # add content to main project file
+        f = open(self._project_path_full + "/" + "requirements.txt", "a")
+        f.write(f"# Generic requirements.txt\n")
+        f.close()
+
     def _dockerfile(self):
         """Add Dockerfile"""
 
-        f = open(self._project_path + "/" + "Dockerfile", "a")
-        f.write(
-            f"""# Generic dockerfile
+        f = open(self._project_path_full + "/" + "Dockerfile", "w")
+        if self._lambda:
+            f.write(
+                f"""# Generic dockerfile
+FROM public.ecr.aws/lambda/python:latest AS buildStage
+
+COPY requirements.txt  ./
+
+RUN  pip3 install --no-cache-dir -r requirements.txt
+
+CMD [ "{self._project_name}.lambda_handler" ]
+\n"""
+            )
+        else:
+            f.write(
+                f"""# Generic dockerfile
 FROM public.ecr.aws/docker/library/python:latest AS buildStage
 
 COPY ./ ./
 
 ENTRYPOINT [ "python3", "{self._project_name}.py" ]
-\n"""
-        )
+    \n"""
+            )
         f.close()
 
     #     def _dockercompose(self):
     #         """Add docker-compose.yaml"""
     #
-    #         f = open(self._project_path + "/" + "docker-compose.yaml", "a")
+    #         f = open(self._project_path_full + "/" + "docker-compose.yaml", "a")
     #         f.write(
     #             f"""# Generic docker-compose
     # version: "3"
@@ -96,7 +133,7 @@ ENTRYPOINT [ "python3", "{self._project_name}.py" ]
     def _makefile(self):
         """Add Makefile"""
 
-        f = open(self._project_path + "/" + "Makefile", "a")
+        f = open(self._project_path_full + "/" + "Makefile", "a")
         f.write(
             f"""# Generic Makefile
 .PHONY: clean
@@ -116,18 +153,6 @@ clean: ## Remove image
 \n"""
         )
         f.close()
-
-    def make_project(self):
-        """Create the directory and the files for the project"""
-
-        if os.path.exists(self._project_path):
-            raise ValueError(f"The directory '{self._project_path}' already exists.")
-        os.mkdir(self._project_path)
-
-        self._mainfile_content()
-        self._dockerfile()
-        # self._dockercompose()
-        self._makefile()
 
 
 if __name__ == "__main__":
