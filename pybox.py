@@ -100,7 +100,7 @@ class PYBOX:
                 f"""# Generic dockerfile
 FROM public.ecr.aws/lambda/python:latest AS buildStage
 
-COPY requirements.txt  ./
+COPY ./  ./
 
 RUN  pip3 install --no-cache-dir -r requirements.txt
 
@@ -143,7 +143,7 @@ help: ## Display this help text
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {{FS = ":.*?## "}}; {{printf "\033[36m%-30s\033[0m %s\\n", $$1, $$2}}'
 
 build: ## Build image
-	docker build -t {self._project_name} ./
+	docker build --platform=linux/amd64 -t {self._project_name} ./
 
 run: ## Run image in interactive mode
 	docker run -it {self._project_name}
